@@ -5,7 +5,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 
 import java.awt.image.BufferedImage;
@@ -25,6 +24,7 @@ public class FishingNativeCapture {
 
     private static final int MIN_FISH_SCORE = 60;
 
+    // Prediction remains diagnostic-only.
     private static final long PREDICTION_MS = 30;
 
     private static final int BASE_SAFE_MARGIN = 4;
@@ -108,7 +108,6 @@ public class FishingNativeCapture {
                 || mc.level == null
                 || mc.gui.screen() != null
                 || capturePending) {
-
             return;
         }
 
@@ -154,21 +153,29 @@ public class FishingNativeCapture {
             if (image == null
                     || requestGeneration != generation
                     || !FisherFishingClient.CONTROLLER.isEnabled()) {
-
                 return;
             }
 
+            // Full-frame conversion for compatibility
+            // testing across resolutions.
             BufferedImage frame = convertImage(image);
 
             long now = System.nanoTime();
 
             updatePerformance(now);
 
+            // ======================================
+            // NEW: Detect the fishing bar first.
+            // ======================================
+
+            FishingBarDetector.Bar bar =
+                    FishingBarDetector.detect(frame);
+
             List<GreenZoneDetector.GreenZone> zones =
-                    GreenZoneDetector.detect(frame);
+                    GreenZoneDetector.detect(frame, bar);
 
             FishPositionDetector.FishPosition fish =
-                    FishPositionDetector.detect(frame);
+                    FishPositionDetector.detect(frame, bar);
 
             boolean hasGreen = !zones.isEmpty();
 
@@ -176,14 +183,19 @@ public class FishingNativeCapture {
                     fish != null
                             && fish.darkPixels() >= MIN_FISH_SCORE;
 
-            boolean validHud = hasGreen && fishValid;
+            boolean validHud =
+                    bar != null && hasGreen && fishValid;
+
+            // ======================================
+            // HUD confirmation.
+            // ======================================
 
             if (validHud) {
 
                 validStreak++;
                 absentStreak = 0;
 
-            } else if (!hasGreen) {
+            } else if (bar == null || !hasGreen) {
 
                 absentStreak++;
                 validStreak = 0;
@@ -199,25 +211,32 @@ public class FishingNativeCapture {
             }
 
             boolean hudVisible =
-                    seenHud && hasGreen;
+                    seenHud && validHud;
 
             boolean hudGone =
                     seenHud && absentStreak >= 2;
 
-            // NEW: Fish partial-overlap detection.
+            // ======================================
+            // Actual partial-overlap detection.
+            // ======================================
+
             boolean insideGreen = false;
 
             if (hudVisible && fishValid) {
 
                 insideGreen =
-                        GreenZoneDetector.isFishOverlappingGreen(
-                                fish.centerX(),
-                                zones,
-                                frame.getWidth()
-                        );
+                        GreenZoneDetector
+                                .isFishOverlappingGreen(
+                                        fish.centerX(),
+                                        zones,
+                                        frame.getWidth()
+                                );
             }
 
-            // Fish movement prediction.
+            // ======================================
+            // Movement prediction: diagnostics only.
+            // ======================================
+
             if (hudVisible && fishValid) {
 
                 predictor.update(
@@ -231,8 +250,8 @@ public class FishingNativeCapture {
                 previousPredictedInside = false;
             }
 
-            boolean predictedInside = false;
             int predictedX = -1;
+            boolean predictedInside = false;
 
             if (hudVisible
                     && fishValid
@@ -249,7 +268,6 @@ public class FishingNativeCapture {
                         );
             }
 
-            // Log first frame of a detected overlap.
             if (insideGreen && !previousOverlap) {
 
                 FisherFishing.LOGGER.info(
@@ -261,7 +279,6 @@ public class FishingNativeCapture {
                 );
             }
 
-            // Log first frame of predicted overlap.
             if (predictedInside
                     && !previousPredictedInside) {
 
@@ -278,8 +295,8 @@ public class FishingNativeCapture {
             previousOverlap = insideGreen;
             previousPredictedInside = predictedInside;
 
-            // Use ACTUAL overlap only.
-            // Prediction is for debugging.
+            // Only actual overlap goes to the
+            // automatic fishing controller.
             latest = new Observation(
                     hudVisible,
                     insideGreen,
@@ -287,12 +304,19 @@ public class FishingNativeCapture {
                     now
             );
 
+            // ======================================
+            // Periodic diagnostics.
+            // ======================================
+
             if (now - lastLog >= LOG_INTERVAL_NS) {
 
                 lastLog = now;
 
                 FisherFishing.LOGGER.info(
-                        "[Native] HUD={}, Green={}, Fish={}, Score={}, Velocity={}, Inside={}, PredictedX={}, PredictedInside={}, Gone={}",
+                        "[Native] Frame={}x{}, Bar={}, HUD={}, Green={}, Fish={}, Score={}, Velocity={}, Inside={}, PredictedX={}, PredictedInside={}, Gone={}",
+                        frame.getWidth(),
+                        frame.getHeight(),
+                        bar,
                         hudVisible,
                         zones,
                         fish != null ? fish.centerX() : -1,
@@ -362,7 +386,6 @@ public class FishingNativeCapture {
 
             if (predictedX >= safeStart
                     && predictedX <= safeEnd) {
-
                 return true;
             }
         }
@@ -383,7 +406,7 @@ public class FishingNativeCapture {
         double seconds =
                 elapsed / 1_000_000_000.0;
 
-        double processedFps =
+        double fps =
                 processedFrames / seconds;
 
         FisherFishing.LOGGER.info(
@@ -391,7 +414,7 @@ public class FishingNativeCapture {
                 String.format(
                         Locale.ROOT,
                         "%.1f",
-                        processedFps
+                        fps
                 )
         );
 

@@ -3,27 +3,25 @@ package com.neko.autofisher;
 
 import java.awt.image.BufferedImage;
 
-public class FishPositionDetector {
+public final class FishPositionDetector {
 
+    private FishPositionDetector() {}
+
+    // Retain darkPixels() for compatibility with
+    // your existing FishingNativeCapture class.
+    // The value is actually a color-match score.
     public record FishPosition(
             int centerX,
             int darkPixels
     ) {}
 
-    private static final int BASE_WIDTH = 1920;
-
-    private static final double MIN_X = 0.12;
-    private static final double MAX_X = 0.88;
-
-    private static final double MIN_Y = 0.37;
-    private static final double MAX_Y = 0.46;
+    private static final int BASE_BAR_HEIGHT = 136;
 
     private static final int WINDOW_RADIUS = 20;
-    private static final int COLOR_TOLERANCE = 8;
     private static final int MIN_SCORE = 35;
 
-    // Distinctive colors sampled from the fish sprite.
-    // Values are RGB.
+    private static final int COLOR_TOLERANCE = 8;
+
     private static final int[][] FISH_COLORS = {
             {135, 103, 105},
             {212, 161, 105},
@@ -37,44 +35,81 @@ public class FishPositionDetector {
     public static FishPosition detect(
             BufferedImage image
     ) {
-        if (image == null) {
+
+        FishingBarDetector.Bar bar =
+                FishingBarDetector.detect(image);
+
+        return detect(image, bar);
+    }
+
+    public static FishPosition detect(
+            BufferedImage image,
+            FishingBarDetector.Bar bar
+    ) {
+
+        if (image == null || bar == null) {
             return null;
         }
 
         int width = image.getWidth();
         int height = image.getHeight();
 
-        int minX = Math.max(
-                0, (int) (width * MIN_X)
-        );
-
-        int maxX = Math.min(
-                width - 1, (int) (width * MAX_X)
-        );
-
-        int minY = Math.max(
-                0, (int) (height * MIN_Y)
-        );
-
-        int maxY = Math.min(
-                height - 1, (int) (height * MAX_Y)
+        // Scale fish sprite search to the actual
+        // rendered HUD size, not monitor resolution.
+        float scale = Math.max(
+                0.5f,
+                bar.height() / (float) BASE_BAR_HEIGHT
         );
 
         int radius = Math.max(
-                5,
-                Math.round(
-                        WINDOW_RADIUS *
-                                width / (float) BASE_WIDTH
-                )
+                8,
+                Math.round(WINDOW_RADIUS * scale)
         );
+
+        int minScore = Math.max(
+                15,
+                Math.round(MIN_SCORE * scale * scale)
+        );
+
+        // Avoid golden border pixels at the edges.
+        int edgePadding = Math.max(
+                3,
+                Math.round(5 * scale)
+        );
+
+        int minX = Math.max(
+                0,
+                bar.left() + edgePadding
+        );
+
+        int maxX = Math.min(
+                width - 1,
+                bar.right() - edgePadding
+        );
+
+        int minY = Math.max(
+                0,
+                bar.top()
+        );
+
+        int maxY = Math.min(
+                height - 1,
+                bar.bottom()
+        );
+
+        if (maxX - minX < radius * 2) {
+            return null;
+        }
 
         int[] colorColumns = new int[width];
 
+        // Count fish palette pixels per column.
         for (int x = minX; x <= maxX; x++) {
 
             int matches = 0;
 
             for (int y = minY; y <= maxY; y++) {
+
                 if (isFishColor(image.getRGB(x, y))) {
                     matches++;
                 }
@@ -83,42 +118,40 @@ public class FishPositionDetector {
             colorColumns[x] = matches;
         }
 
+        // Sliding-window score.
         int bestX = -1;
         int bestScore = 0;
 
-        // Sliding-window matching.
-        for (int x = minX + radius;
-             x <= maxX - radius;
-             x++) {
+        int score = 0;
 
-            int score = 0;
+        for (int x = minX; x <= minX + radius * 2; x++) {
+            score += colorColumns[x];
+        }
 
-            for (int dx = -radius;
-                 dx <= radius;
-                 dx++) {
-
-                score += colorColumns[x + dx];
-            }
+        for (int center = minX + radius;
+             center <= maxX - radius;
+             center++) {
 
             if (score > bestScore) {
                 bestScore = score;
-                bestX = x;
+                bestX = center;
+            }
+
+            int leaving = center - radius;
+            int entering = center + radius + 1;
+
+            if (entering <= maxX) {
+                score -= colorColumns[leaving];
+                score += colorColumns[entering];
             }
         }
 
-        int minScore = Math.max(
-                10,
-                Math.round(
-                        MIN_SCORE *
-                                width / (float) BASE_WIDTH
-                )
-        );
-
-        if (bestX == -1 || bestScore < minScore) {
+        if (bestX < 0 || bestScore < minScore) {
             return null;
         }
 
-        // Weighted center of matching fish colors.
+        // Weighted average gives the detected
+        // fish's estimated center position.
         long weightedX = 0;
         int totalMatches = 0;
 
@@ -148,15 +181,15 @@ public class FishPositionDetector {
 
     private static boolean isFishColor(int rgb) {
 
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
+        int r = (rgb >> 16) & 255;
+        int g = (rgb >> 8) & 255;
+        int b = rgb & 255;
 
         for (int[] color : FISH_COLORS) {
 
-            if (Math.abs(red - color[0]) <= COLOR_TOLERANCE
-                    && Math.abs(green - color[1]) <= COLOR_TOLERANCE
-                    && Math.abs(blue - color[2]) <= COLOR_TOLERANCE) {
+            if (Math.abs(r - color[0]) <= COLOR_TOLERANCE
+                    && Math.abs(g - color[1]) <= COLOR_TOLERANCE
+                    && Math.abs(b - color[2]) <= COLOR_TOLERANCE) {
 
                 return true;
             }

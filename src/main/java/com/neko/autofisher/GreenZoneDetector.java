@@ -5,79 +5,80 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GreenZoneDetector {
+public final class GreenZoneDetector {
+
+    private GreenZoneDetector() {}
 
     public record GreenZone(int startX, int endX) {}
 
     private static final int BASE_WIDTH = 1920;
 
-    private static final double MIN_X = 0.12;
-    private static final double MAX_X = 0.88;
-
-    private static final double[] SAMPLE_Y = {
-            0.40,
-            0.43,
-            0.47
-    };
-
-    private static final int MIN_WIDTH = 5;
-    private static final int MAX_GAP = 24;
-
-    // Fish-overlap settings for narrow green zones.
     private static final int FISH_HALF_WIDTH = 16;
     private static final int MINIMUM_OVERLAP = 6;
 
     public static List<GreenZone> detect(
             BufferedImage image
     ) {
+        FishingBarDetector.Bar bar =
+                FishingBarDetector.detect(image);
+
+        return detect(image, bar);
+    }
+
+    public static List<GreenZone> detect(
+            BufferedImage image,
+            FishingBarDetector.Bar bar
+    ) {
 
         List<GreenZone> zones = new ArrayList<>();
 
-        if (image == null) {
+        if (image == null || bar == null) {
             return zones;
         }
 
         int width = image.getWidth();
-        int height = image.getHeight();
 
-        int minX = Math.max(
-                0,
-                (int) (width * MIN_X)
-        );
-
-        int maxX = Math.min(
-                width - 1,
-                (int) (width * MAX_X)
-        );
+        // Scale thresholds according to the
+        // actual detected HUD width.
+        float scale = bar.width() / 1350.0f;
 
         int minWidth = Math.max(
-                2,
-                Math.round(
-                        MIN_WIDTH * width / (float) BASE_WIDTH
-                )
+                3,
+                Math.round(5 * scale)
         );
 
         int maxGap = Math.max(
-                1,
-                Math.round(
-                        MAX_GAP * width / (float) BASE_WIDTH
-                )
+                4,
+                Math.round(24 * scale)
         );
 
-        // Identify columns with green pixels.
         boolean[] greenColumns = new boolean[width];
 
-        for (double sampleY : SAMPLE_Y) {
+        // Scan rows relative to the fishing bar,
+        // not the entire screen height.
+        double[] rowPositions = {
+                0.25,
+                0.40,
+                0.50,
+                0.60,
+                0.75
+        };
 
-            int y = Math.min(
-                    height - 1,
-                    Math.max(
-                            0,
-                            (int) (height * sampleY)
-                    )
+        for (double position : rowPositions) {
+
+            int y = bar.top()
+                    + (int) Math.round(
+                    (bar.height() - 1) * position
             );
 
-            for (int x = minX; x <= maxX; x++) {
+            y = Math.max(
+                    0,
+                    Math.min(image.getHeight() - 1, y)
+            );
+
+            for (int x = bar.left();
+                 x <= bar.right();
+                 x++) {
 
                 if (isGreen(image.getRGB(x, y))) {
                     greenColumns[x] = true;
@@ -85,27 +86,28 @@ public class GreenZoneDetector {
             }
         }
 
-        // Find contiguous green regions.
-        List<GreenZone> rawZones = new ArrayList<>();
+        List<GreenZone> fragments = new ArrayList<>();
 
         int start = -1;
 
-        for (int x = minX; x <= maxX + 1; x++) {
+        for (int x = bar.left();
+             x <= bar.right() + 1;
+             x++) {
 
             boolean green =
-                    x <= maxX && greenColumns[x];
+                    x <= bar.right()
+                            && greenColumns[x];
 
             if (green && start == -1) {
-
                 start = x;
+            }
 
-            } else if (!green && start != -1) {
+            if (!green && start != -1) {
 
                 int end = x - 1;
 
                 if (end - start + 1 >= minWidth) {
-
-                    rawZones.add(
+                    fragments.add(
                             new GreenZone(start, end)
                     );
                 }
@@ -114,16 +116,20 @@ public class GreenZoneDetector {
             }
         }
 
-        // Merge nearby fragments of the same zone.
-        for (GreenZone zone : rawZones) {
+        // Merge green fragments separated by
+        // the moving fish sprite.
+        for (GreenZone zone : fragments) {
 
             if (!zones.isEmpty()) {
 
                 int lastIndex = zones.size() - 1;
-                GreenZone previous = zones.get(lastIndex);
+
+                GreenZone previous =
+                        zones.get(lastIndex);
 
                 int gap =
-                        zone.startX() - previous.endX() - 1;
+                        zone.startX()
+                                - previous.endX() - 1;
 
                 if (gap <= maxGap) {
 
@@ -158,7 +164,6 @@ public class GreenZoneDetector {
                 && g > b * 1.3;
     }
 
-    // Original center-based detection.
     public static boolean isInsideAnyZone(
             int fishX,
             List<GreenZone> zones
@@ -172,7 +177,6 @@ public class GreenZoneDetector {
 
             if (fishX >= zone.startX()
                     && fishX <= zone.endX()) {
-
                 return true;
             }
         }
@@ -180,7 +184,6 @@ public class GreenZoneDetector {
         return false;
     }
 
-    // Previous tolerance-based detection.
     public static boolean isInsideAnyZoneWithTolerance(
             int fishX,
             List<GreenZone> zones,
@@ -193,14 +196,15 @@ public class GreenZoneDetector {
 
         int tolerance = Math.max(
                 1,
-                Math.round(imageWidth * 12f / BASE_WIDTH)
+                Math.round(
+                        imageWidth * 12f / BASE_WIDTH
+                )
         );
 
         for (GreenZone zone : zones) {
 
             if (fishX >= zone.startX() - tolerance
                     && fishX <= zone.endX() + tolerance) {
-
                 return true;
             }
         }
@@ -208,7 +212,8 @@ public class GreenZoneDetector {
         return false;
     }
 
-    // NEW: Detect partial fish overlap with green.
+    // Preserve the partial-overlap behavior that
+    // successfully caught narrow edge zones.
     public static boolean isFishOverlappingGreen(
             int fishCenterX,
             List<GreenZone> zones,
