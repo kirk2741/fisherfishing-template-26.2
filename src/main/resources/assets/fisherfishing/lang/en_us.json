@@ -1,0 +1,13 @@
+{
+  "itemGroup.fisherfishing": "Example Mod Tab",
+  "block.fisherfishing.example_block": "Example Block",
+  "item.fisherfishing.example_item": "Example Item",
+
+  "fisherfishing.configuration.title": "Fisher Fishing Configs",
+  "fisherfishing.configuration.section.fisherfishing.common.toml": "Fisher Fishing Configs",
+  "fisherfishing.configuration.section.fisherfishing.common.toml.title": "Fisher Fishing Configs",
+  "fisherfishing.configuration.items": "Item List",
+  "fisherfishing.configuration.logDirtBlock": "Log Dirt Block",
+  "fisherfishing.configuration.magicNumberIntroduction": "Magic Number Text",
+  "fisherfishing.configuration.magicNumber": "Magic Number"
+}
