@@ -7,9 +7,8 @@ public final class FishPositionDetector {
 
     private FishPositionDetector() {}
 
-    // Retain darkPixels() for compatibility with
-    // your existing FishingNativeCapture class.
-    // The value is actually a color-match score.
+    // Keep this record unchanged for compatibility
+    // with FishingNativeCapture.java.
     public record FishPosition(
             int centerX,
             int darkPixels
@@ -21,6 +20,9 @@ public final class FishPositionDetector {
     private static final int MIN_SCORE = 35;
 
     private static final int COLOR_TOLERANCE = 8;
+
+    // NEW: Exclude decorative bar borders.
+    private static final double EDGE_EXCLUSION = 0.025;
 
     private static final int[][] FISH_COLORS = {
             {135, 103, 105},
@@ -54,8 +56,6 @@ public final class FishPositionDetector {
         int width = image.getWidth();
         int height = image.getHeight();
 
-        // Scale fish sprite search to the actual
-        // rendered HUD size, not monitor resolution.
         float scale = Math.max(
                 0.5f,
                 bar.height() / (float) BASE_BAR_HEIGHT
@@ -71,20 +71,23 @@ public final class FishPositionDetector {
                 Math.round(MIN_SCORE * scale * scale)
         );
 
-        // Avoid golden border pixels at the edges.
-        int edgePadding = Math.max(
-                3,
-                Math.round(5 * scale)
+        // NEW: Exclude the outer area where border
+        // textures can resemble fish palette colors.
+        int edgeExclusion = Math.max(
+                12,
+                Math.round(
+                        bar.width() * (float) EDGE_EXCLUSION
+                )
         );
 
         int minX = Math.max(
                 0,
-                bar.left() + edgePadding
+                bar.left() + edgeExclusion
         );
 
         int maxX = Math.min(
                 width - 1,
-                bar.right() - edgePadding
+                bar.right() - edgeExclusion
         );
 
         int minY = Math.max(
@@ -103,7 +106,7 @@ public final class FishPositionDetector {
 
         int[] colorColumns = new int[width];
 
-        // Count fish palette pixels per column.
+        // Scan only the usable fishing-bar region.
         for (int x = minX; x <= maxX; x++) {
 
             int matches = 0;
@@ -118,13 +121,16 @@ public final class FishPositionDetector {
             colorColumns[x] = matches;
         }
 
-        // Sliding-window score.
+        // Sliding-window fish detection.
         int bestX = -1;
         int bestScore = 0;
 
         int score = 0;
 
-        for (int x = minX; x <= minX + radius * 2; x++) {
+        for (int x = minX;
+             x <= minX + radius * 2;
+             x++) {
+
             score += colorColumns[x];
         }
 
@@ -141,6 +147,7 @@ public final class FishPositionDetector {
             int entering = center + radius + 1;
 
             if (entering <= maxX) {
+
                 score -= colorColumns[leaving];
                 score += colorColumns[entering];
             }
@@ -150,8 +157,7 @@ public final class FishPositionDetector {
             return null;
         }
 
-        // Weighted average gives the detected
-        // fish's estimated center position.
+        // Find the weighted center of matching pixels.
         long weightedX = 0;
         int totalMatches = 0;
 
@@ -187,9 +193,12 @@ public final class FishPositionDetector {
 
         for (int[] color : FISH_COLORS) {
 
-            if (Math.abs(r - color[0]) <= COLOR_TOLERANCE
-                    && Math.abs(g - color[1]) <= COLOR_TOLERANCE
-                    && Math.abs(b - color[2]) <= COLOR_TOLERANCE) {
+            if (Math.abs(r - color[0])
+                    <= COLOR_TOLERANCE
+                    && Math.abs(g - color[1])
+                    <= COLOR_TOLERANCE
+                    && Math.abs(b - color[2])
+                    <= COLOR_TOLERANCE) {
 
                 return true;
             }
