@@ -133,22 +133,35 @@ public class FisherFishingClient {
                 NATIVE_CAPTURE.getObservation();
 
 
+
+        boolean hookPresent =
+                mc.player != null
+                        && mc.player.fishing != null;
+
         CONTROLLER.tick(
                 observation.hudVisible(),
-
-                // Enable automatic catch using actual fish overlap.
                 observation.insideGreen(),
-
                 observation.hudGone(),
+                hookPresent,
 
-                // Cast
+                // CAST
                 () -> {
                     NATIVE_CAPTURE.reset();
                     rightClick(mc);
                 },
 
-                // Catch
-                () -> rightClick(mc)
+                // NORMAL CATCH
+                () -> rightClick(mc),
+
+                // RECOVERY REEL-IN
+                () -> {
+                    if (mc.player != null
+                            && mc.player.fishing != null) {
+
+                        NATIVE_CAPTURE.reset();
+                        rightClick(mc);
+                    }
+                }
         );
 
     }
