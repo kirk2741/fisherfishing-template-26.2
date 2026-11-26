@@ -1,5 +1,7 @@
 
 package com.neko.autofisher;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class FishingController {
 
@@ -311,26 +313,34 @@ public class FishingController {
         }
     }
 
+
     private void performCatch(
             long now,
             Runnable catchFish
     ) {
-
+        // Catch immediately.
         catchFish.run();
 
-        cooldownEndMs =
-                now + config.catchCooldownMs;
+        // Read the latest values from the in-game config.
+        FishingConfig settings = FishingConfig.get();
 
-        setState(
-                State.COOLDOWN,
-                now
-        );
+        int min = settings.minCatchDelayMs;
+        int max = settings.maxCatchDelayMs;
+
+        int delayMs = ThreadLocalRandom.current()
+                .nextInt(min, max + 1);
+
+        cooldownEndMs = now + delayMs;
+
+        setState(State.COOLDOWN, now);
 
         FisherFishing.LOGGER.info(
-                "[Auto Fisher] Catch triggered, cooldown={}ms",
-                config.catchCooldownMs
+                "[Auto Fisher] Catch triggered, random cooldown={}ms",
+                delayMs
         );
     }
+
+
 
     private void startRecovery(
             long now,

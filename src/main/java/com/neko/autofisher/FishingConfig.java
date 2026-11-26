@@ -1,186 +1,115 @@
 
 package com.neko.autofisher;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Properties;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class FishingConfig {
 
-    private static final Path CONFIG_PATH =
-            Path.of("config", "fisherfishing.properties");
+    public static final ModConfigSpec SPEC;
 
-    private static FishingConfig current;
+    private static final ModConfigSpec.BooleanValue AUTO_RECOVERY;
+
+    private static final ModConfigSpec.IntValue WAITING_TIMEOUT;
+    private static final ModConfigSpec.IntValue MINIGAME_TIMEOUT;
+    private static final ModConfigSpec.IntValue RECOVERY_DELAY;
+
+    private static final ModConfigSpec.IntValue MIN_CATCH_DELAY;
+    private static final ModConfigSpec.IntValue MAX_CATCH_DELAY;
+
+    static {
+        ModConfigSpec.Builder builder =
+                new ModConfigSpec.Builder();
+
+        builder.push("recovery");
+
+        AUTO_RECOVERY = builder
+                .comment("Recover automatically if fishing gets stuck.")
+                .translation("fisherfishing.config.autoRecovery")
+                .define("autoRecovery", true);
+
+        WAITING_TIMEOUT = builder
+                .comment("Seconds to wait for the fishing HUD.")
+                .translation("fisherfishing.config.waitingTimeout")
+                .defineInRange(
+                        "waitingTimeoutSeconds",
+                        90, 15, 3600
+                );
+
+        MINIGAME_TIMEOUT = builder
+                .comment("Seconds before a fishing minigame times out.")
+                .translation("fisherfishing.config.minigameTimeout")
+                .defineInRange(
+                        "minigameTimeoutSeconds",
+                        30, 5, 600
+                );
+
+        RECOVERY_DELAY = builder
+                .comment("Milliseconds to wait before recasting after recovery.")
+                .translation("fisherfishing.config.recoveryDelay")
+                .defineInRange(
+                        "recoveryDelayMs",
+                        2000, 500, 30000
+                );
+
+        builder.pop();
+
+        builder.push("catching");
+
+        MIN_CATCH_DELAY = builder
+                .comment("Minimum milliseconds after catching before recasting.")
+                .translation("fisherfishing.config.minCatchDelay")
+                .defineInRange(
+                        "minCatchDelayMs",
+                        1000, 500, 30000
+                );
+
+        MAX_CATCH_DELAY = builder
+                .comment("Maximum milliseconds after catching before recasting.")
+                .translation("fisherfishing.config.maxCatchDelay")
+                .defineInRange(
+                        "maxCatchDelayMs",
+                        4000, 500, 30000
+                );
+
+        builder.pop();
+
+        SPEC = builder.build();
+    }
 
     public final boolean autoRecovery;
     public final int waitingTimeoutSeconds;
     public final int minigameTimeoutSeconds;
     public final int recoveryDelayMs;
+
+    public final int minCatchDelayMs;
+    public final int maxCatchDelayMs;
+
+    // Retained for compatibility with any existing
+    // code that still references catchCooldownMs.
     public final int catchCooldownMs;
 
-    private FishingConfig(
-            boolean autoRecovery,
-            int waitingTimeoutSeconds,
-            int minigameTimeoutSeconds,
-            int recoveryDelayMs,
-            int catchCooldownMs
-    ) {
-        this.autoRecovery = autoRecovery;
-        this.waitingTimeoutSeconds = waitingTimeoutSeconds;
-        this.minigameTimeoutSeconds = minigameTimeoutSeconds;
-        this.recoveryDelayMs = recoveryDelayMs;
-        this.catchCooldownMs = catchCooldownMs;
+    private FishingConfig() {
+        autoRecovery = AUTO_RECOVERY.get();
+        waitingTimeoutSeconds = WAITING_TIMEOUT.get();
+        minigameTimeoutSeconds = MINIGAME_TIMEOUT.get();
+        recoveryDelayMs = RECOVERY_DELAY.get();
+
+        int minimum = MIN_CATCH_DELAY.get();
+        int maximum = MAX_CATCH_DELAY.get();
+
+        minCatchDelayMs = Math.min(minimum, maximum);
+        maxCatchDelayMs = Math.max(minimum, maximum);
+
+        catchCooldownMs = minCatchDelayMs;
     }
 
-    public static synchronized FishingConfig get() {
-        if (current == null) {
-            current = load();
-        }
-        return current;
+    public static FishingConfig get() {
+        return new FishingConfig();
     }
 
-    public static synchronized FishingConfig reload() {
-        current = load();
-        return current;
-    }
-
-    private static FishingConfig load() {
-
-        Properties properties = new Properties();
-
-        properties.setProperty(
-                "autoRecovery", "true"
-        );
-        properties.setProperty(
-                "waitingTimeoutSeconds", "90"
-        );
-        properties.setProperty(
-                "minigameTimeoutSeconds", "30"
-        );
-        properties.setProperty(
-                "recoveryDelayMs", "2000"
-        );
-        properties.setProperty(
-                "catchCooldownMs", "2000"
-        );
-
-        try {
-
-            Files.createDirectories(
-                    CONFIG_PATH.getParent()
-            );
-
-            if (Files.exists(CONFIG_PATH)) {
-
-                try (InputStream in =
-                             Files.newInputStream(CONFIG_PATH)) {
-                    properties.load(in);
-                }
-
-            } else {
-
-                try (OutputStream out =
-                             Files.newOutputStream(CONFIG_PATH)) {
-
-                    properties.store(
-                            out,
-                            "Neko Auto Fisher Configuration"
-                    );
-                }
-
-                FisherFishing.LOGGER.info(
-                        "[Auto Fisher] Created config: {}",
-                        CONFIG_PATH.toAbsolutePath()
-                );
-            }
-
-        } catch (IOException e) {
-
-            FisherFishing.LOGGER.error(
-                    "[Auto Fisher] Could not load configuration. Using defaults.",
-                    e
-            );
-        }
-
-        FishingConfig config = new FishingConfig(
-
-                Boolean.parseBoolean(
-                        properties.getProperty(
-                                "autoRecovery", "true"
-                        )
-                ),
-
-                readInt(
-                        properties,
-                        "waitingTimeoutSeconds",
-                        90, 15, 3600
-                ),
-
-                readInt(
-                        properties,
-                        "minigameTimeoutSeconds",
-                        30, 5, 600
-                ),
-
-                readInt(
-                        properties,
-                        "recoveryDelayMs",
-                        2000, 500, 30000
-                ),
-
-                readInt(
-                        properties,
-                        "catchCooldownMs",
-                        2000, 500, 30000
-                )
-        );
-
-        FisherFishing.LOGGER.info(
-                "[Auto Fisher] Config loaded: autoRecovery={}, waitingTimeout={}s, minigameTimeout={}s, recoveryDelay={}ms, catchCooldown={}ms",
-                config.autoRecovery,
-                config.waitingTimeoutSeconds,
-                config.minigameTimeoutSeconds,
-                config.recoveryDelayMs,
-                config.catchCooldownMs
-        );
-
-        return config;
-    }
-
-    private static int readInt(
-            Properties properties,
-            String key,
-            int defaultValue,
-            int minimum,
-            int maximum
-    ) {
-
-        try {
-
-            int value = Integer.parseInt(
-                    properties.getProperty(
-                            key,
-                            Integer.toString(defaultValue)
-                    ).trim()
-            );
-
-            return Math.max(
-                    minimum,
-                    Math.min(maximum, value)
-            );
-
-        } catch (NumberFormatException e) {
-
-            FisherFishing.LOGGER.warn(
-                    "[Auto Fisher] Invalid config value for {}. Using {}.",
-                    key,
-                    defaultValue
-            );
-
-            return defaultValue;
-        }
+    public static FishingConfig reload() {
+        // NeoForge already manages and saves its
+        // registered configuration.
+        return new FishingConfig();
     }
 }
