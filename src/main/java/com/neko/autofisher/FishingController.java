@@ -385,7 +385,7 @@ public class FishingController {
             recoveryReeledIn = true;
             recoveryAttempts = 1;
 
-            FisherFishing.LOGGER.info(
+            FisherFishing.LOGGER.warn(
                     "[Auto Fisher] Recovery reel-in attempt {}/{}",
                     recoveryAttempts,
                     MAX_RECOVERY_ATTEMPTS
