@@ -25,6 +25,9 @@ public class FishingController {
     // hook is already missing.
     private boolean recoveryReeledIn = false;
 
+    private static final int MAX_RECOVERY_ATTEMPTS = 4;
+    private int recoveryAttempts = 0;
+
     public void toggle() {
 
         if (state == State.DISABLED) {
@@ -36,6 +39,7 @@ public class FishingController {
             cooldownEndMs = 0;
 
             recoveryReeledIn = false;
+            recoveryAttempts = 0;
 
             FisherFishing.LOGGER.info(
                     "[Auto Fisher] ON"
@@ -54,6 +58,7 @@ public class FishingController {
         cooldownEndMs = 0;
 
         recoveryReeledIn = false;
+        recoveryAttempts = 0;
 
         FisherFishing.LOGGER.info(
                 "[Auto Fisher] OFF"
@@ -265,44 +270,60 @@ public class FishingController {
                     break;
                 }
 
-                if (hookPresent) {
+                // The hook disappeared: recovery succeeded.
+                if (!hookPresent) {
 
-                    // Hook may not have disappeared yet.
-                    // Avoid accidentally casting/reeling
-                    // back and forth.
-                    FisherFishing.LOGGER.warn(
-                            "[Auto Fisher] Recovery delayed: hook still deployed"
+                    FisherFishing.LOGGER.info(
+                            "[Auto Fisher] Recovery successful after {} reel-in attempt(s)",
+                            recoveryAttempts
                     );
 
-                    // Retry the recovery click only after
-                    // another recovery delay.
-                    // This is bounded by the configured
-                    // delay, not repeated every tick.
-                    if (config.autoRecovery
-                            && recoveryReeledIn) {
+                    recoveryAttempts = 0;
+                    recoveryReeledIn = false;
 
-                        recover.run();
-
-                        cooldownEndMs =
-                                now + config.recoveryDelayMs;
-
-                        FisherFishing.LOGGER.info(
-                                "[Auto Fisher] Recovery reel-in retry"
-                        );
-                    }
-
+                    setState(
+                            State.CASTING,
+                            now
+                    );
                     break;
                 }
 
-                recoveryReeledIn = false;
+                // Waited after the fourth attempt and the
+                // hook is still deployed: stop automating.
+                if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
 
-                FisherFishing.LOGGER.info(
-                        "[Auto Fisher] Recovery complete. Preparing to cast."
-                );
+                    FisherFishing.LOGGER.error(
+                            "[Auto Fisher] Recovery failed after {}/{} attempts. Disabling F8 automation.",
+                            recoveryAttempts,
+                            MAX_RECOVERY_ATTEMPTS
+                    );
 
-                setState(
-                        State.CASTING,
-                        now
+                    disable();
+                    break;
+                }
+
+                if (!config.autoRecovery || !recoveryReeledIn) {
+
+                    FisherFishing.LOGGER.error(
+                            "[Auto Fisher] Recovery cannot continue. Disabling F8 automation."
+                    );
+
+                    disable();
+                    break;
+                }
+
+                // One retry per recoveryDelayMs; four
+                // reel-in clicks maximum per recovery.
+                recover.run();
+                recoveryAttempts++;
+
+                cooldownEndMs =
+                        now + config.recoveryDelayMs;
+
+                FisherFishing.LOGGER.warn(
+                        "[Auto Fisher] Recovery reel-in attempt {}/{}",
+                        recoveryAttempts,
+                        MAX_RECOVERY_ATTEMPTS
                 );
 
                 break;
@@ -355,15 +376,19 @@ public class FishingController {
         );
 
         recoveryReeledIn = false;
+        recoveryAttempts = 0;
 
         if (hookPresent) {
 
             // Hook exists, so retrieve it first.
             recover.run();
             recoveryReeledIn = true;
+            recoveryAttempts = 1;
 
             FisherFishing.LOGGER.info(
-                    "[Auto Fisher] Recovery: retrieving fishing hook"
+                    "[Auto Fisher] Recovery reel-in attempt {}/{}",
+                    recoveryAttempts,
+                    MAX_RECOVERY_ATTEMPTS
             );
 
         } else {
