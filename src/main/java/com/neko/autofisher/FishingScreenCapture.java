@@ -28,19 +28,19 @@ public class FishingScreenCapture {
             FishPositionDetector.FishPosition fish =
                     FishPositionDetector.detect(frame);
 
-            FisherFishing.LOGGER.info(
+            FisherFishing.LOGGER.debug(
                     "[Auto Fisher] Screenshot: {}x{}",
                     frame.getWidth(),
                     frame.getHeight()
             );
 
-            FisherFishing.LOGGER.info(
+            FisherFishing.LOGGER.debug(
                     "[Auto Fisher] Green zones: {}",
                     zones.size()
             );
 
             for (GreenZoneDetector.GreenZone zone : zones) {
-                FisherFishing.LOGGER.info(
+                FisherFishing.LOGGER.debug(
                         "[Auto Fisher] Green X: {} - {}",
                         zone.startX(),
                         zone.endX()
@@ -48,7 +48,7 @@ public class FishingScreenCapture {
             }
 
             if (fish == null) {
-                FisherFishing.LOGGER.info(
+                FisherFishing.LOGGER.debug(
                         "[Auto Fisher] Fish NOT detected"
                 );
                 return;
@@ -60,17 +60,17 @@ public class FishingScreenCapture {
                             zones
                     );
 
-            FisherFishing.LOGGER.info(
+            FisherFishing.LOGGER.debug(
                     "[Auto Fisher] Fish X: {}",
                     fish.centerX()
             );
 
-            FisherFishing.LOGGER.info(
+            FisherFishing.LOGGER.debug(
                     "[Auto Fisher] Inside green: {}",
                     insideGreen
             );
 
-            FisherFishing.LOGGER.info(
+            FisherFishing.LOGGER.debug(
                     "[Auto Fisher] Decision: {}",
                     insideGreen ? "RIGHT CLICK" : "WAIT"
             );
