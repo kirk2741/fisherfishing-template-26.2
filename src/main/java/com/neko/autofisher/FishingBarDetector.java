@@ -45,7 +45,7 @@ public final class FishingBarDetector {
 
         int rowThreshold = Math.max(
                 30,
-                (int) (width * 0.23)
+                (int) (width * 0.08)
         );
 
         int[] rowScores = new int[height];
@@ -216,7 +216,7 @@ public final class FishingBarDetector {
         }
 
         // Reject unusually small detected regions.
-        if (right - left < width * 0.35) {
+        if (right - left < width * 0.12) {
             return null;
         }
 
@@ -253,3 +253,5 @@ public final class FishingBarDetector {
                 && b < 150;
     }
 }
+
+
