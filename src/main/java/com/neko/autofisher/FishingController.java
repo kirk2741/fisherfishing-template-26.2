@@ -19,7 +19,7 @@ public class FishingController {
     private long stateStartMs = 0;
     private long cooldownEndMs = 0;
 
-    private FishingConfig config = FishingConfig.get();
+    private FishingConfig config;
 
     // Prevent repeated recovery clicks when the
     // hook is already missing.

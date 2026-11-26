@@ -11,6 +11,8 @@
   "fisherfishing.configuration.magicNumberIntroduction": "Magic Number Text",
   "fisherfishing.configuration.magicNumber": "Magic Number",
 
+  "fisherfishing.config.recovery": "Auto Recovery",
+  "fisherfishing.config.catching": "Catching Delay",
   "fisherfishing.config.autoRecovery": "Auto Recovery",
   "fisherfishing.config.waitingTimeout": "Waiting Timeout (seconds)",
   "fisherfishing.config.minigameTimeout": "Minigame Timeout (seconds)",
