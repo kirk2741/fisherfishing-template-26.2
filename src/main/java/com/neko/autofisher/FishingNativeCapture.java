@@ -388,7 +388,7 @@ public class FishingNativeCapture {
 
             if (insideGreen && !previousOverlap) {
 
-                FisherFishing.LOGGER.info(
+                FisherFishing.LOGGER.debug(
                         "[OVERLAP HIT] Fish={}, Green={}, Score={}, Velocity={}",
                         fish.centerX(),
                         zones,
@@ -400,7 +400,7 @@ public class FishingNativeCapture {
             if (predictedInside
                     && !previousPredictedInside) {
 
-                FisherFishing.LOGGER.info(
+                FisherFishing.LOGGER.debug(
                         "[PREDICT HIT] Fish={}, FutureX={}, Velocity={}, Green={}, ActualOverlap={}",
                         fish.centerX(),
                         predictedX,
@@ -434,7 +434,7 @@ public class FishingNativeCapture {
 
                 if (seconds > 0) {
 
-                    FisherFishing.LOGGER.info(
+                    FisherFishing.LOGGER.debug(
                             "[Native PERF] Processed FPS={}, BarCached={}, Conversion={}ms, Detection={}ms",
                             String.format(
                                     Locale.ROOT,
@@ -453,7 +453,7 @@ public class FishingNativeCapture {
                     );
                 }
 
-                FisherFishing.LOGGER.info(
+                FisherFishing.LOGGER.debug(
                         "[Native] Frame={}x{}, Bar={}, HUD={}, Green={}, Fish={}, Score={}, Velocity={}, Inside={}, PredictedX={}, PredictedInside={}, Gone={}",
                         width,
                         height,
