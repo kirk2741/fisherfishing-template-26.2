@@ -296,7 +296,10 @@ public class FishingNativeCapture {
 
             boolean fishValid =
                     fish != null
-                            && fish.darkPixels() >= MIN_FISH_SCORE;
+                            && fish.darkPixels() >= Math.max(15,
+                                    Math.round(MIN_FISH_SCORE * Math.min(1.0f,
+                                            bar.height() / 136.0f)
+                                            * Math.min(1.0f, bar.height() / 136.0f)));
 
             boolean validHud =
                     bar != null
@@ -346,7 +349,7 @@ public class FishingNativeCapture {
                                 .isFishOverlappingGreen(
                                         fish.centerX(),
                                         zones,
-                                        width
+                                        bar.width()
                                 );
             }
 
@@ -529,7 +532,7 @@ public class FishingNativeCapture {
 
         int threshold = Math.max(
                 12,
-                (int) (samplesPerRow * 0.18)
+                (int) (samplesPerRow * 0.08)
         );
 
         for (int y = minY; y <= maxY; y += stepY) {
@@ -746,3 +749,5 @@ public class FishingNativeCapture {
         );
     }
 }
+
+
