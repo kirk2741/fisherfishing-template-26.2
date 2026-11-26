@@ -228,7 +228,7 @@ public final class GreenZoneDetector {
                 1,
                 Math.round(
                         imageWidth * FISH_HALF_WIDTH
-                                / (float) BASE_WIDTH
+                                / 1350.0f
                 )
         );
 
@@ -236,7 +236,7 @@ public final class GreenZoneDetector {
                 1,
                 Math.round(
                         imageWidth * MINIMUM_OVERLAP
-                                / (float) BASE_WIDTH
+                                / 1350.0f
                 )
         );
 
@@ -268,3 +268,5 @@ public final class GreenZoneDetector {
         return false;
     }
 }
+
+
