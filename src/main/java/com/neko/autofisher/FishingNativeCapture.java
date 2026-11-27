@@ -30,6 +30,9 @@ public class FishingNativeCapture {
     // Rediscover candidates that never reveal a green zone.
     private static final long BAR_RECHECK_NS = 500_000_000L;
 
+    // Brief detection gaps must not be mistaken for a vanished HUD.
+    private static final long HUD_ABSENCE_GRACE_NS = 500_000_000L;
+
     private static final int MIN_FISH_SCORE = 60;
 
     private static final long PREDICTION_MS = 30;
@@ -59,7 +62,7 @@ public class FishingNativeCapture {
     private BufferedImage cachedFrame = null;
 
     private int validStreak = 0;
-    private int absentStreak = 0;
+    private long absentSinceNs = 0;
 
     private boolean seenHud = false;
 
@@ -89,7 +92,7 @@ public class FishingNativeCapture {
         noGreenSinceNs = 0;
 
         validStreak = 0;
-        absentStreak = 0;
+        absentSinceNs = 0;
 
         seenHud = false;
 
@@ -198,7 +201,7 @@ public class FishingNativeCapture {
                 noGreenSinceNs = 0;
 
                 validStreak = 0;
-                absentStreak = 0;
+                absentSinceNs = 0;
                 seenHud = false;
 
                 predictor.reset();
@@ -320,17 +323,16 @@ public class FishingNativeCapture {
             if (validHud) {
 
                 validStreak++;
-                absentStreak = 0;
-
-            } else if (bar == null || !hasGreen) {
-
-                validStreak = 0;
-                absentStreak++;
-
             } else {
-
                 validStreak = 0;
-                absentStreak = 0;
+            }
+
+            // A temporarily hidden or very narrow green zone does not mean
+            // the red fishing bar has disappeared.
+            if (bar != null) {
+                absentSinceNs = 0;
+            } else if (absentSinceNs == 0) {
+                absentSinceNs = now;
             }
 
             if (validStreak >= 2) {
@@ -341,7 +343,8 @@ public class FishingNativeCapture {
                     seenHud && validHud;
 
             boolean hudGone =
-                    seenHud && absentStreak >= 2;
+                    seenHud && absentSinceNs != 0
+                            && now - absentSinceNs >= HUD_ABSENCE_GRACE_NS;
 
             // ======================================
             // 3. Working partial-overlap detection.
