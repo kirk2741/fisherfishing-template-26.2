@@ -27,6 +27,9 @@ public class FishingNativeCapture {
     private static final long MAX_FRAME_AGE_NS =
             750_000_000L;
 
+    // Rediscover candidates that never reveal a green zone.
+    private static final long BAR_RECHECK_NS = 500_000_000L;
+
     private static final int MIN_FISH_SCORE = 60;
 
     private static final long PREDICTION_MS = 30;
@@ -49,6 +52,7 @@ public class FishingNativeCapture {
     private volatile int generation = 0;
 
     private FishingBarDetector.Bar cachedBar = null;
+    private long noGreenSinceNs = 0;
 
     // Reuse the image rather than allocating a new
     // full-screen BufferedImage every frame.
@@ -82,6 +86,7 @@ public class FishingNativeCapture {
         latest = UNKNOWN;
 
         cachedBar = null;
+        noGreenSinceNs = 0;
 
         validStreak = 0;
         absentStreak = 0;
@@ -190,6 +195,7 @@ public class FishingNativeCapture {
 
                 cachedBar = null;
                 cachedFrame = null;
+                noGreenSinceNs = 0;
 
                 validStreak = 0;
                 absentStreak = 0;
@@ -293,6 +299,17 @@ public class FishingNativeCapture {
             timingSamples++;
 
             boolean hasGreen = !zones.isEmpty();
+
+            // A red object or an incomplete bar can pass the red-only cache
+            // check. Periodically search the full frame until green is found.
+            if (bar == null || hasGreen) {
+                noGreenSinceNs = 0;
+            } else if (noGreenSinceNs == 0) {
+                noGreenSinceNs = now;
+            } else if (now - noGreenSinceNs >= BAR_RECHECK_NS) {
+                cachedBar = null;
+                noGreenSinceNs = 0;
+            }
 
             boolean fishValid =
                     fish != null
