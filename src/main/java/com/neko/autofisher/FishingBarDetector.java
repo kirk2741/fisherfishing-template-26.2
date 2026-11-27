@@ -224,7 +224,7 @@ public final class FishingBarDetector {
         // and fish pixels extending outside the red fill.
         int padX = Math.max(
                 12,
-                Math.round(width * 0.015f)
+                Math.round(width * 0.06f)
         );
 
         int padY = Math.max(
