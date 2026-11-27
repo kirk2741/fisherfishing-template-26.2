@@ -129,6 +129,19 @@ public class FisherFishingClient {
             return;
         }
 
+        // Stop before the next cast, after the last catch has had time to arrive.
+        if (CONTROLLER.getState() == FishingController.State.CASTING
+                && FishingConfig.stopWhenInventoryFull()
+                && mc.player.getInventory().getFreeSlot() < 0) {
+            CONTROLLER.disable();
+            NATIVE_CAPTURE.reset();
+            mc.player.sendOverlayMessage(
+                    Component.literal("[Auto Fisher] Inventory full - stopped")
+            );
+            FisherFishing.LOGGER.info("[Auto Fisher] Inventory full; automation stopped");
+            return;
+        }
+
         FishingNativeCapture.Observation observation =
                 NATIVE_CAPTURE.getObservation();
 

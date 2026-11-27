@@ -14,6 +14,7 @@
   "fisherfishing.config.recovery": "Auto Recovery",
   "fisherfishing.config.catching": "Catching Delay",
   "fisherfishing.config.autoRecovery": "Auto Recovery",
+  "fisherfishing.config.stopWhenInventoryFull": "Stop When Inventory Is Full",
   "fisherfishing.config.waitingTimeout": "Waiting Timeout (seconds)",
   "fisherfishing.config.minigameTimeout": "Minigame Timeout (seconds)",
   "fisherfishing.config.recoveryDelay": "Recovery Delay (ms)",

@@ -8,6 +8,7 @@ public final class FishingConfig {
     public static final ModConfigSpec SPEC;
 
     private static final ModConfigSpec.BooleanValue AUTO_RECOVERY;
+    private static final ModConfigSpec.BooleanValue STOP_WHEN_INVENTORY_FULL;
 
     private static final ModConfigSpec.IntValue WAITING_TIMEOUT;
     private static final ModConfigSpec.IntValue MINIGAME_TIMEOUT;
@@ -54,6 +55,11 @@ public final class FishingConfig {
         builder.pop();
 
         builder.push("catching");
+
+        STOP_WHEN_INVENTORY_FULL = builder
+                .comment("Stop before casting when all 36 inventory and hotbar slots are occupied.")
+                .translation("fisherfishing.config.stopWhenInventoryFull")
+                .define("stopWhenInventoryFull", false);
 
         MIN_CATCH_DELAY = builder
                 .comment("Minimum milliseconds after catching before recasting.")
@@ -105,6 +111,10 @@ public final class FishingConfig {
 
     public static FishingConfig get() {
         return new FishingConfig();
+    }
+
+    public static boolean stopWhenInventoryFull() {
+        return STOP_WHEN_INVENTORY_FULL.get();
     }
 
     public static FishingConfig reload() {
