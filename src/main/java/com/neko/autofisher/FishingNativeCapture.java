@@ -56,6 +56,7 @@ public class FishingNativeCapture {
 
     private FishingBarDetector.Bar cachedBar = null;
     private long noGreenSinceNs = 0;
+    private boolean revalidateAfterScreen = false;
 
     // Reuse the image rather than allocating a new
     // full-screen BufferedImage every frame.
@@ -90,6 +91,7 @@ public class FishingNativeCapture {
 
         cachedBar = null;
         noGreenSinceNs = 0;
+        revalidateAfterScreen = false;
 
         validStreak = 0;
         absentSinceNs = 0;
@@ -100,6 +102,24 @@ public class FishingNativeCapture {
 
         previousOverlap = false;
         previousPredictedInside = false;
+    }
+
+    // Keep the last confirmed bar location, but never reuse an old observation.
+    // The next frame verifies the location before it can trigger a catch.
+    public void resetForScreen() {
+        generation++;
+        latest = UNKNOWN;
+        validStreak = 0;
+        absentSinceNs = 0;
+        noGreenSinceNs = 0;
+        revalidateAfterScreen = cachedBar != null;
+        if (!revalidateAfterScreen) {
+            seenHud = false;
+        }
+        predictor.reset();
+        previousOverlap = false;
+        previousPredictedInside = false;
+        lastCapture = 0;
     }
 
     public Observation getObservation() {
@@ -199,6 +219,7 @@ public class FishingNativeCapture {
                 cachedBar = null;
                 cachedFrame = null;
                 noGreenSinceNs = 0;
+                revalidateAfterScreen = false;
 
                 validStreak = 0;
                 absentSinceNs = 0;
@@ -222,7 +243,12 @@ public class FishingNativeCapture {
                 // Existing HUD disappeared or moved.
                 cachedBar = null;
                 bar = null;
+                if (revalidateAfterScreen) {
+                    seenHud = false;
+                    validStreak = 0;
+                }
             }
+            revalidateAfterScreen = false;
 
             boolean candidateVisible = false;
 
@@ -425,6 +451,11 @@ public class FishingNativeCapture {
 
             previousOverlap = insideGreen;
             previousPredictedInside = predictedInside;
+
+            // A screen may have opened or closed while this frame was processed.
+            if (requestGeneration != generation) {
+                return;
+            }
 
             latest = new Observation(
                     hudVisible,
@@ -726,3 +757,5 @@ public class FishingNativeCapture {
         );
     }
 }
+
+

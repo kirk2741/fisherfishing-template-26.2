@@ -115,7 +115,7 @@ public class FisherFishingClient {
         if (mc.gui.screen() != null) {
             if (!pausedForScreen) {
                 CONTROLLER.pause();
-                NATIVE_CAPTURE.reset();
+                NATIVE_CAPTURE.resetForScreen();
                 pausedForScreen = true;
             }
             return;
@@ -123,7 +123,7 @@ public class FisherFishingClient {
 
         if (pausedForScreen) {
             CONTROLLER.resume();
-            NATIVE_CAPTURE.reset();
+            NATIVE_CAPTURE.resetForScreen();
             pausedForScreen = false;
             // Wait for a fresh capture before making any fishing decision.
             return;
