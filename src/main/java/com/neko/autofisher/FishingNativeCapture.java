@@ -31,7 +31,7 @@ public class FishingNativeCapture {
     private static final long BAR_RECHECK_NS = 500_000_000L;
 
     // Brief detection gaps must not be mistaken for a vanished HUD.
-    private static final long HUD_ABSENCE_GRACE_NS = 500_000_000L;
+    private static final long HUD_ABSENCE_GRACE_NS = 1_000_000_000L;
 
     private static final int MIN_FISH_SCORE = 60;
 
