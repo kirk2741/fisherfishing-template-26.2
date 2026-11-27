@@ -240,33 +240,14 @@ public class FishingNativeCapture {
 
             if (candidateVisible) {
 
-                long conversionStart = System.nanoTime();
-
                 if (bar == null) {
-
-                    // Full-frame conversion is necessary
-                    // only when locating a new bar.
-                    cachedFrame =
-                            createFullFrame(image);
-
-                } else {
-
-                    // Once found, copy ONLY bar pixels.
-                    updateBarRegion(image, bar);
-                }
-
-                long conversionEnd = System.nanoTime();
-
-                conversionNs =
-                        conversionEnd - conversionStart;
-
-                if (bar == null) {
-
-                    // Full-screen bar localization
-                    // happens only on initial discovery.
+                    // Locate directly in the native image; avoid copying the
+                    // entire screen when an unconfirmed candidate is retried.
+                    long detectionStart = System.nanoTime();
                     bar = FishingBarDetector.detect(
-                            cachedFrame
+                            width, height, image::getPixel
                     );
+                    detectionNs += System.nanoTime() - detectionStart;
 
                     if (bar != null) {
                         cachedBar = bar;
@@ -274,6 +255,15 @@ public class FishingNativeCapture {
                 }
 
                 if (bar != null) {
+
+                    long conversionStart = System.nanoTime();
+                    if (cachedFrame == null) {
+                        cachedFrame = new BufferedImage(
+                                width, height, BufferedImage.TYPE_INT_ARGB
+                        );
+                    }
+                    updateBarRegion(image, bar);
+                    conversionNs = System.nanoTime() - conversionStart;
 
                     long detectionStart =
                             System.nanoTime();
@@ -288,7 +278,7 @@ public class FishingNativeCapture {
                             bar
                     );
 
-                    detectionNs =
+                    detectionNs +=
                             System.nanoTime()
                                     - detectionStart;
                 }
@@ -452,7 +442,7 @@ public class FishingNativeCapture {
                         (now - fpsStart)
                                 / 1_000_000_000.0;
 
-                if (seconds > 0) {
+                if (seconds > 0 && FisherFishing.LOGGER.isDebugEnabled()) {
 
                     FisherFishing.LOGGER.debug(
                             "[Native PERF] Processed FPS={}, BarCached={}, Conversion={}ms, Detection={}ms",
@@ -626,39 +616,6 @@ public class FishingNativeCapture {
     }
 
     // ======================================
-    // Full-frame conversion:
-    // only for initial bar discovery.
-    // ======================================
-
-    private BufferedImage createFullFrame(
-            NativeImage source
-    ) {
-
-        int width = source.getWidth();
-        int height = source.getHeight();
-
-        BufferedImage frame = new BufferedImage(
-                width,
-                height,
-                BufferedImage.TYPE_INT_ARGB
-        );
-
-        for (int y = 0; y < height; y++) {
-
-            for (int x = 0; x < width; x++) {
-
-                frame.setRGB(
-                        x,
-                        y,
-                        source.getPixel(x, y)
-                );
-            }
-        }
-
-        return frame;
-    }
-
-    // ======================================
     // Subsequent captures: copy HUD only.
     // Coordinates remain full-screen values.
     // ======================================
@@ -766,5 +723,3 @@ public class FishingNativeCapture {
         );
     }
 }
-
-

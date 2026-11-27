@@ -2,6 +2,7 @@
 package com.neko.autofisher;
 
 import java.awt.image.BufferedImage;
+import java.util.function.IntBinaryOperator;
 
 public final class FishingBarDetector {
 
@@ -35,6 +36,11 @@ public final class FishingBarDetector {
         int width = image.getWidth();
         int height = image.getHeight();
 
+        return detect(width, height, image::getRGB);
+    }
+
+    public static Bar detect(int width, int height, IntBinaryOperator pixelAt) {
+
         // Broad search area supports different HUD
         // positions and common aspect ratios.
         int minX = (int) (width * 0.08);
@@ -57,7 +63,7 @@ public final class FishingBarDetector {
 
             for (int x = minX; x <= maxX; x += 2) {
 
-                if (isBarRed(image.getRGB(x, y))) {
+                if (isBarRed(pixelAt.applyAsInt(x, y))) {
                     count += 2;
                 }
             }
@@ -138,7 +144,7 @@ public final class FishingBarDetector {
 
             for (int x = minX; x <= maxX; x++) {
 
-                if (isBarRed(image.getRGB(x, y))) {
+                if (isBarRed(pixelAt.applyAsInt(x, y))) {
                     columnVotes[x]++;
                 }
             }
@@ -253,5 +259,3 @@ public final class FishingBarDetector {
                 && b < 150;
     }
 }
-
-
