@@ -30,6 +30,8 @@ public class FisherFishingClient {
     private static final FishingScreenCapture SCREEN_CAPTURE =
             new FishingScreenCapture();
 
+    private boolean pausedForScreen = false;
+
     private static final KeyMapping TOGGLE_KEY =
             new KeyMapping(
                     "key.fisherfishing.toggle",
@@ -75,6 +77,7 @@ public class FisherFishingClient {
         if (mc.player == null || mc.level == null) {
             CONTROLLER.disable();
             NATIVE_CAPTURE.reset();
+            pausedForScreen = false;
             return;
         }
 
@@ -110,6 +113,19 @@ public class FisherFishingClient {
 
         // Do not automate while a GUI is open.
         if (mc.gui.screen() != null) {
+            if (!pausedForScreen) {
+                CONTROLLER.pause();
+                NATIVE_CAPTURE.reset();
+                pausedForScreen = true;
+            }
+            return;
+        }
+
+        if (pausedForScreen) {
+            CONTROLLER.resume();
+            NATIVE_CAPTURE.reset();
+            pausedForScreen = false;
+            // Wait for a fresh capture before making any fishing decision.
             return;
         }
 
@@ -154,7 +170,6 @@ public class FisherFishingClient {
         CONTROLLER.tick(
                 observation.hudVisible(),
                 observation.insideGreen(),
-                observation.hudGone(),
                 hookPresent,
 
                 // CAST
@@ -164,17 +179,7 @@ public class FisherFishingClient {
                 },
 
                 // NORMAL CATCH
-                () -> rightClick(mc),
-
-                // RECOVERY REEL-IN
-                () -> {
-                    if (mc.player != null
-                            && mc.player.fishing != null) {
-
-                        NATIVE_CAPTURE.reset();
-                        rightClick(mc);
-                    }
-                }
+                () -> rightClick(mc)
         );
 
     }

@@ -7,12 +7,10 @@ public final class FishingConfig {
 
     public static final ModConfigSpec SPEC;
 
-    private static final ModConfigSpec.BooleanValue AUTO_RECOVERY;
     private static final ModConfigSpec.BooleanValue STOP_WHEN_INVENTORY_FULL;
 
     private static final ModConfigSpec.IntValue WAITING_TIMEOUT;
     private static final ModConfigSpec.IntValue MINIGAME_TIMEOUT;
-    private static final ModConfigSpec.IntValue RECOVERY_DELAY;
 
     private static final ModConfigSpec.IntValue MIN_CATCH_DELAY;
     private static final ModConfigSpec.IntValue MAX_CATCH_DELAY;
@@ -23,13 +21,8 @@ public final class FishingConfig {
 
         builder.push("recovery");
 
-        AUTO_RECOVERY = builder
-                .comment("Recover automatically if fishing gets stuck.")
-                .translation("fisherfishing.config.autoRecovery")
-                .define("autoRecovery", true);
-
         WAITING_TIMEOUT = builder
-                .comment("Seconds to wait for the fishing HUD.")
+                .comment("Seconds to wait before checking for a missing hook while waiting for the HUD.")
                 .translation("fisherfishing.config.waitingTimeout")
                 .defineInRange(
                         "waitingTimeoutSeconds",
@@ -37,19 +30,11 @@ public final class FishingConfig {
                 );
 
         MINIGAME_TIMEOUT = builder
-                .comment("Seconds before a fishing minigame times out.")
+                .comment("Seconds to wait before checking for a missing hook during the minigame.")
                 .translation("fisherfishing.config.minigameTimeout")
                 .defineInRange(
                         "minigameTimeoutSeconds",
                         30, 5, 600
-                );
-
-        RECOVERY_DELAY = builder
-                .comment("Milliseconds to wait before recasting after recovery.")
-                .translation("fisherfishing.config.recoveryDelay")
-                .defineInRange(
-                        "recoveryDelayMs",
-                        2000, 500, 30000
                 );
 
         builder.pop();
@@ -82,10 +67,8 @@ public final class FishingConfig {
         SPEC = builder.build();
     }
 
-    public final boolean autoRecovery;
     public final int waitingTimeoutSeconds;
     public final int minigameTimeoutSeconds;
-    public final int recoveryDelayMs;
 
     public final int minCatchDelayMs;
     public final int maxCatchDelayMs;
@@ -95,10 +78,8 @@ public final class FishingConfig {
     public final int catchCooldownMs;
 
     private FishingConfig() {
-        autoRecovery = AUTO_RECOVERY.get();
         waitingTimeoutSeconds = WAITING_TIMEOUT.get();
         minigameTimeoutSeconds = MINIGAME_TIMEOUT.get();
-        recoveryDelayMs = RECOVERY_DELAY.get();
 
         int minimum = MIN_CATCH_DELAY.get();
         int maximum = MAX_CATCH_DELAY.get();
